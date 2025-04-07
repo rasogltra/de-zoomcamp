@@ -12,5 +12,16 @@ Dataset 2: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
 * Postgres
 * Jupyter Notebook
 
+### Prerequisites
+
+* Pull Postgres Docker Image
+  ```bash
+  docker run postgres:13
+  ```
+* Pull pgAdmin Docker Image
+  ```bash
+  docker run pgdmin
+  ```
+
 
 
