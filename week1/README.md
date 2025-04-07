@@ -1,39 +1,16 @@
-# Week 1 Overview
+## Week 1 Overview
+Built a data pipeline with DataTalkClub: https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/01-docker-terraform
 
-Introduction to Docker
+Dataset 1: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page (note: Year 2021)
 
-- A "simple" Docker pipeline using docker commands docker install, run, ps, compose up and down.
+Dataset 2: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
 
-# 1. Install Docker (if not already installed).
+### Built With
+* Python 3.9+
+* Docker (https://www.docker.com)
+* Visual Studio
+* Postgres
+* Jupyter Notebook
 
-# 2. Pull and run PostGres container
-```bash
-docker run -it  \
-  -e POSTGRES_USER="root" \
-  -e POSTGRES_PASSWORD="root" \
-  -e POSTGRES_DB="ny_taxi" \
-  -v $(pwd)/ny_taxi_postgres_data:/var/lib/postgresql/data \
-  -p 5432:5432 \
-  --network=pg-network \
-  --name pg-database \
-  postgres:13
-
-# 3. Pull and run pgAdmin container
-docker run -it \
-  -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
-  -e PGADMIN_DEFAULT_PASSWORD="root" \
-  -p 8080:80 \
-  --network=pg-network \
-  --name pgadmin \
-  dpage/pgadmin4
-
-# 4. Check running containers
-docker ps
-
-# 5. Use Docker Compose to manage services
-docker compose up -d
-
-# 6. Bring services down when done
-docker compose down
 
 
