@@ -2,24 +2,38 @@
 
 Introduction to Docker
 
-- Created a "simple" Docker pipeline using docker commands docker install, run, ps, compose up and down.
+- A "simple" Docker pipeline using docker commands docker install, run, ps, compose up and down.
 
-# 1. Install Docker (if not already installed)
+# 1. Install Docker (if not already installed).
 
-# 2. Pull and run PostGres and pgAdmin container 
-docker run -d \
-  -p 8080:5432 \
-  --name my-postgres \
-  -e POSTGRES_PASSWORD=mysecretpassword \
+# 2. Pull and run PostGres container
+```bash
+docker run -it  \
+  -e POSTGRES_USER="root" \
+  -e POSTGRES_PASSWORD="root" \
+  -e POSTGRES_DB="ny_taxi" \
+  -v $(pwd)/ny_taxi_postgres_data:/var/lib/postgresql/data \
+  -p 5432:5432 \
+  --network=pg-network \
+  --name pg-database \
   postgres:13
 
-# 3. Check running containers
+# 3. Pull and run pgAdmin container
+docker run -it \
+  -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+  -e PGADMIN_DEFAULT_PASSWORD="root" \
+  -p 8080:80 \
+  --network=pg-network \
+  --name pgadmin \
+  dpage/pgadmin4
+
+# 4. Check running containers
 docker ps
 
-# 4. Use Docker Compose to manage services
+# 5. Use Docker Compose to manage services
 docker compose up -d
 
-# 5. Bring services down when done
+# 6. Bring services down when done
 docker compose down
 
 
