@@ -74,7 +74,7 @@ docker run -it \
   --name pgadmin \
   dpage/pgadmin4
 ```
-You should be able to see results on http://localhost:8080/.
+You should be able to to see in web browser: http://localhost:8080/.
 
 2. Create a new server on pgAdmin UI.
 
@@ -88,23 +88,59 @@ jupyter nbconvert --to=script {notebook.ipynb}
 ```sql
 DROP TABLE yellow_taxi_data;
 ```
+* There are multiple methods to ingest the data into pg-database. 
 
-2a. Ingest Data via python command.
-```bash
-URL="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
+  2a. Ingest Data via python command
+    ```bash
+    URL="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
 
-python3 ingest_ny_taxi_data.py \
-  --user=root \
-  --password=root \
-  --host=localhost \
-  --port=5432 \
-  --database=ny_taxi \
-  --url=${URL} \
-  --table_name=yellow_taxi_data
-```
+    python3 ingest_ny_taxi_data.py \
+    --user=root \
+    --password=root \
+    --host=localhost \
+    --port=5432 \
+    --database=ny_taxi \
+    --url=${URL} \
+    --table_name=yellow_taxi_data
+    ```
+    Check web browser: http://localhost:8080/
+  
+  2b. Ingest Data via dockerizing python script
+  * Edit Dockerfile
+  ```bash
+  FROM python:latest
 
-#### Create docker-compose.yaml
-1. See docker-compose.yaml to create a database connection using pg-database. Use docker command docker-compose up.
+  # installs app dependencies
+  RUN pip install pandas sqlalchemy psycopg2-binary pyarrow
+
+  # sets the workin dir inside container
+  WORKDIR /app 
+
+  # copies the app code from local into container
+  COPY ingest_ny_taxi_data.py ingest_ny_taxi_data.py
+
+  ENTRYPOINT [ "python", "ingest_ny_taxi_data.py" ]
+  ```
+  * Build in Docker
+    ```bash
+      docker build -t taxi_ingest:v001 .
+    ```
+    
+    ```bash
+    docker run -it \
+      --network=pg-network \
+      taxi_ingest:v001 \
+      --user=root \
+      --password=root \
+      --host=pg-database \
+      --port=5432 \
+      --db=ny_taxi \
+      --table_name=yellow_taxi_trips \
+      --url=${URL}
+    ```
+
+#### Run Postgres and pgadmin with Docker-Compose
+1. See docker-compose.yaml to create a database connection using pg-database. Use docker command docker-compose up -d and docker-compose down to destory.
    
 
 
