@@ -14,14 +14,9 @@ Dataset 2: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
 * pgAdmin UI
 
 ### Prerequisites
-* Pull Postgres Docker Image
-  ```bash
-  docker pull postgres:13
-  ```
-* Pull pgAdmin Docker Image 
-  ```bash
-  docker pull dpaege/pgdmin4
-  ```
+* Pull Postgres Docker Image ```bash docker pull postgres:13 ```
+* Pull pgAdmin Docker Image ```bash docker pull dpaege/pgdmin4 ```
+  
 ### Ingesting NY Taxi Data to Postgres
 1. Run Postgres with Docker
 ```bash
@@ -79,12 +74,10 @@ You should be able to to see in web browser: http://localhost:8080/.
 2. Create a new server on pgAdmin UI.
 
 #### Dockerizing the Ingestion Script
-1. Convert ingest_ny_taxi_data.ipynb to a python script.
-```bash
-jupyter nbconvert --to=script {notebook.ipynb}
-```
+1. Convert ingest_ny_taxi_data.ipynb to a python script. ```bash jupyter nbconvert --to=script {notebook.ipynb} ```
 
-(note: before moving to step 2, drop ny_taxi data table in Postgres.)
+(note: before moving to step 2, drop ny_taxi data table in Postgres)
+
 ```sql
 DROP TABLE yellow_taxi_data;
 ```
@@ -121,10 +114,7 @@ DROP TABLE yellow_taxi_data;
 
   ENTRYPOINT [ "python", "ingest_ny_taxi_data.py" ]
   ```
-  * Build in Docker
-    ```bash
-      docker build -t taxi_ingest:v001 .
-    ```
+  * Build in Docker```bash docker build -t taxi_ingest:v001 .```
     
     ```bash
     docker run -it \
@@ -141,7 +131,51 @@ DROP TABLE yellow_taxi_data;
 
 #### Run Postgres and pgadmin with Docker-Compose
 1. See docker-compose.yaml to create a database connection using pg-database. Use docker command docker-compose up -d and docker-compose down to destory.
+
+## Setting up infrastructure on GCP with Terraform
+
+Configure it -> Initialize -> Plan -> Apply -> Destroy
+
+## Built With
+* Terraform
+* Google Cloud
+
+### Prerequisites
+* Setup a service account in Google Cloud
+
+### Terraform for GCP
+
+1. Install provider, copy and paste provider Terraform configuration. Where ```bash my-project-id ``` comes from GCP dashboard. See Main.tf.
+2. Run ```bash terraform init ```
+3. Append a new bucket in Google cloud storage service. See Main.tf.
+```bash
+resource "google_storage_bucket" "auto-expire" {
+  name          = "auto-expiring-bucket"
+  location      = "US"
+  force_destroy = true
+
+  lifecycle_rule {
+    condition {
+      age = 3
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 1
+    }
+    action {
+      type = "AbortIncompleteMultipartUpload"
+    }
+  }
+}
+```
+Where ```bash auto-expire & name ``` should be change to a unique name.
+
+4. Run ```bash terraform plan ``` Check GCP for bucket.
    
-
-
-
+5. Run ```bash terraform destory ```
+6. Modify Main.tf by creating variables in Variable.tf. Run ```bash terraform apply ``` to see changes.
