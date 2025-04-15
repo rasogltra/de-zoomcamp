@@ -3,7 +3,6 @@
 The following outlines the steps to configure a Google Cloud VM.
 
 ## Create an SSH key pair
-
 Create .ssh directory `mkdir ~/.ssh ` if it doesn't already exist. Then, generate an SSH key pair by running the following command in the terminal: 
 
 ```bash
@@ -19,7 +18,6 @@ Using GCP console, paste the contents of the key into the SSH key text box under
 `ssh -i ~/.ssh/privateKey_Filename user@external IP`
 
 ## Configure VM instance in GCP
-
 In the GCP Console, create a new VM instance. Configure the following settings:
 - Name, Region, Series, and Machine Type
 - Boot Disk: Select Ubuntu 20.04 LTS, choose Balanced persistent disk, and set the Size to 30 GB
