@@ -59,7 +59,8 @@ Note: Ths `it` flag stands for interactive mode, allowing you to interact with t
 
 ## Setup Postgres in Docker
 1. Create a Docker-Compose `yaml` file to define your services and configuration.
-   ```services:
+```
+  services:
   pgdatabase:
     image: postgres:13
     environment:
