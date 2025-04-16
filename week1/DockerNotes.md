@@ -29,7 +29,8 @@ We created a Dockerfile using a Python 3.9 base image to setup an enivoronment w
 RUN pip install pandas
 WORKDIR /app
 COPY pipeline_Source.py pipeline_Dest.py
-ENTRYPOINT["python", "pipeline.py"]```
+ENTRYPOINT["python", "pipeline.py"]
+```
 
 #### Breakdown of the Dockerfile
 `FROM python:3.9` - This line specifies the base image for the container, which in our case is Python version 3.9.
