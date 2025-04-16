@@ -2,17 +2,20 @@
 
 Configure it -> Initialize -> Plan -> Apply -> Destroy
 
-## Built With
-* Terraform
-* Google Cloud
-
 ### Prerequisites
-* Setup a service account in Google Cloud
+* Install Terraform (https://developer.hashicorp.com/terraform)
+* Install gCloud CLI
 
-### Terraform for GCP
+### Setup GCP Service Account
+Setup a service account and name the account `terraform-runner`. Assign `Storage admin` and `BigQuery admin` roles. Create and download the JSON key file.
 
-1. Install provider, copy and paste provider Terraform configuration. Where ```bash my-project-id ``` comes from GCP dashboard. See [Main.tf](https://github.com/rasogltra/de-zoomcamp/blob/main/week1/terraform/main.tf).
-2. Run ```bash terraform init ```
+#### Managing keys
+To authenicate Terraform with GCP: `gcloud auth application-default login`. Here you can authenicate with your Google account. After success authentication, credentials will be stored locally and Terraform will be able to use them automatically.
+
+#### Terraform Configuration
+
+1. Add configurations. See [Main.tf](https://github.com/rasogltra/de-zoomcamp/blob/main/week1/terraform/main.tf).
+2. Run `terraform init`
 3. Append a new bucket in Google cloud storage service. See [Main.tf](https://github.com/rasogltra/de-zoomcamp/blob/main/week1/terraform/main.tf).
 ```bash
 resource "google_storage_bucket" "auto-expire" {
