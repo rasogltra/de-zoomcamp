@@ -1,11 +1,10 @@
-## Week 1 Overview
+# Week 1 Overview
 Built a data pipeline with DataTalkClub: https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/01-docker-terraform
 
 Dataset 1: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page (note: Year 2021)
-
 Dataset 2: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
 
-### Built With
+## Built With
 * Python 3.9+
 * Docker (https://www.docker.com)
 * Visual Studio
@@ -13,26 +12,87 @@ Dataset 2: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
 * Jupyter Notebook
 * pgAdmin UI
 
-### Prerequisites
-* Pull Postgres Docker Image ```bash docker pull postgres:13 ```
-* Pull pgAdmin Docker Image ```bash docker pull dpaege/pgdmin4 ```
-  
-### Ingesting NY Taxi Data to Postgres
-1. Run Postgres with Docker
+## Prerequisites
+* Install Docker (https://www.docker.com)
+* Install Python 3.9+
+* Pull Postgres Docker Image `docker pull postgres:13`
+* Pull pgAdmin Docker Image `docker pull dpaege/pgdmin4`
+
+## Docker Introduction
+
+Dockerfile ->(build) Docker Image -> (run) Docker Container
+
+Run command `docker run hello-world` to test if docker is installed properly. 
+
+### Dockerfile
+We created a Dockerfile using a Python 3.9 base image to setup an enivoronment within a Docker container. Below are the steps to setup the environment:
+
+`FROM python:3.9
+RUN pip install pandas
+WORKDIR /app
+COPY pipeline_Source.py pipeline_Dest.py
+ENTRYPOINT["python", "pipeline.py"]
+
+#### Breakdown of the Dockerfile
+`FROM python:3.9` - This line specifies the base image to use for the container. In our case, it was Python ver. 3.9.
+`RUN pip install pandas` - Installs panda library within the container. 
+`WORKDIR /app` - Sets the working directory inside the container to `/app`.
+`COPY pipeline_Source.py pipeline_Dest.py` - Copies a file (pipeline_Source.py) from local machine into the container's /app directory and renames it to (pipeline_Dest.py).
+`ENTRYPOINT["python", "pipeline.py"]` - This defines the command that will run `pipeline.py` using Python. 
+
+### Write a script in the Container
+Write a python file using pandas module, name file `pipeline.py`:
+```import pandas as pd
+# do stuff
+print ('Pandas imported!')
+```
+### Build and Run the Docker Container
+To build the image, we ran the following command within the Dockerfile directory:
+`docker build -t my-pipeline-img .` and, to run the container from the image, use `docker run -it my-pipeline-img` where `it` stands for interactive mode.
+
+### Ingest NY Taxi data to Postgres database
+
+## Setup Postgres in Docker
+1. Create a Docker-Compose `yaml` file and name it docker-compose.yaml
+   ```services:
+  pgdatabase:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=passwrd
+      - POSTGRES_DB=ny_taxi
+    volumes:
+      - "./ny_taxi_postgres_data:/var/lib/postgresql/data:rw"
+    ports:
+      - "5432:5432"
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=email@email.com
+      - PGADMIN_DEFAULT_PASSWORD=passwrd
+    ports:
+      - "8080:80"
+```
+2. Create folder called ny_taxi_postgres_data for your persistent data.
+
+Note: `volumes` defines persistent storage for containers. It allows you to store data outside the container, meaning the data persist without the container.
+
+2. Run Postgres with Docker in terminal
 ```bash
 docker run -it  \
-  -e POSTGRES_USER="root" \
-  -e POSTGRES_PASSWORD="root" \
+  -e POSTGRES_USER="user" \
+  -e POSTGRES_PASSWORD="passwrd" \
   -e POSTGRES_DB="ny_taxi" \
   -v $(pwd)/ny_taxi_postgres_data:/var/lib/postgresql/data \
   -p 5432:5432 \
   postgres:13
 ```
+If ran properly, then files generate in the `ny_taxi_postgres_data` folder.
+
 2. Use pgcli to connect to Postgres
 ```bash
 pip install pgcli
-pgcli -h localhost -p 5432 -u root -d ny_taxi
-\dt 
+pgcli -h localhost -p 5432 -u user -d ny_taxi
 ```
 3. Ingest the data to Postgres. See ingest_ny_taxi_data.ipynb.
 
@@ -44,7 +104,6 @@ docker run -it \
   -p 8080:80 \
   dpage/pgadmin4
 ```
-
 (note: pgadmin container can't access the postgres container. connected them below to properly ingest the data, again.)
 
 #### Add Docker Network
