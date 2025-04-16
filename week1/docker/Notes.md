@@ -125,6 +125,7 @@ To copy a file from local machine to VM, use the `scp` command:
 `scp /path/to/local/ingest_file.ipynb username@vm_external_ip:/path/on/vm`
 
 ### Terraform - Install and Run
+See TerraformNotes.md
 
 
 
