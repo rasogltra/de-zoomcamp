@@ -84,7 +84,7 @@ Note: Ths `it` flag stands for interactive mode, allowing you to interact with t
 Note: `volumes` define persistent storage for containers. They allow you to store data outside the container, ensuring that the data persist even if the container is removed or recreated. 
 
 2. Run Postgres with Docker in terminal
-```bash
+```
 docker run -it  \
   -e POSTGRES_USER="user" \
   -e POSTGRES_PASSWORD="passwrd" \
@@ -96,6 +96,7 @@ docker run -it  \
 If the process runs correctly, the files will generated in the `ny_taxi_postgres_data` folder.
 
 3. Use `pgcli` to connect to Postgres
+
 ```
 pip install pgcli
 pgcli -h localhost -p 5432 -u user -d ny_taxi
@@ -109,7 +110,7 @@ The command should start the `pgcli` interactivve shell and connect you to postg
 ## Connect pgAdmin and Postgres
 1. Pull pgAdmin container
 2. Run the container
-   ```docker run -it \
+```docker run -it \
   -e PGADMIN_DEFAULT_EMAIL="email@email.com" \
   -e PGADMIN_DEFAULT_PASSWORD="root" \
   -p 8080:80 \
