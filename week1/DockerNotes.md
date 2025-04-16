@@ -1,7 +1,7 @@
 # Week 1 Overview
 Built a data pipeline with DataTalkClub: https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/01-docker-terraform
 
-Dataset 1: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page (note: Year 2021)
+Dataset 1: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
 Dataset 2: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
 
 ## Built With
@@ -15,11 +15,9 @@ Dataset 2: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
 ## Prerequisites
 * Install Docker (https://www.docker.com)
 * Install Python 3.9+
-* Pull Postgres Docker Image `docker pull postgres:13`
-* Pull pgAdmin Docker Image `docker pull dpaege/pgdmin4`
-
+* Download Dataset 1: `wget https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet`
+  
 ## Docker Introduction
-
 Dockerfile ->(build) Docker Image -> (run) Docker Container
 
 Run command `docker run hello-world` to test if docker is installed properly. 
@@ -42,7 +40,8 @@ ENTRYPOINT["python", "pipeline.py"]
 
 ### Write a script in the Container
 Write a python file using pandas module, name file `pipeline.py`:
-```import pandas as pd
+```python
+import pandas as pd
 # do stuff
 print ('Pandas imported!')
 ```
@@ -89,27 +88,34 @@ docker run -it  \
 ```
 If ran properly, then files generate in the `ny_taxi_postgres_data` folder.
 
-2. Use pgcli to connect to Postgres
-```bash
+3. Use `pgcli` to connect to Postgres
+```
 pip install pgcli
 pgcli -h localhost -p 5432 -u user -d ny_taxi
 ```
-3. Ingest the data to Postgres. See ingest_ny_taxi_data.ipynb.
+The latter command should start the pgcli interactivve shell and connect you to postgres, where you can run statements like `\dt`. 
 
-4. Run pgAdmin with Docker. 
-```bash
-docker run -it \
-  -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+## Jupyter Notebook
+1. Install `pip install jupyter`
+2. Ingest the data to Postgres. See ingest_ny_taxi_data.ipynb.
+
+## Connect pgAdmin and Postgres
+1. Pull pgAdmin container
+2. Run the container
+   ```docker run -it \
+  -e PGADMIN_DEFAULT_EMAIL="email@email.com" \
   -e PGADMIN_DEFAULT_PASSWORD="root" \
   -p 8080:80 \
   dpage/pgadmin4
 ```
-(note: pgadmin container can't access the postgres container. connected them below to properly ingest the data, again.)
+(Note: pgAdmin container and postgres container are still isolated, so we connectd them via docker network)
 
-#### Add Docker Network
-1. Run pgAdmin & Postgres containers
-```bash
-docker network create pg-network
+## Add Docker Network
+1. Create Docker Network
+```docker network create pg-network```
+
+2. Modify Docker `run` commands
+```
 docker run -it  \
   -e POSTGRES_USER="root" \
   -e POSTGRES_PASSWORD="root" \
@@ -130,17 +136,17 @@ docker run -it \
 ```
 You should be able to to see in web browser: http://localhost:8080/.
 
-2. Create a new server on pgAdmin UI.
+3. Create a new server on pgAdmin UI. Go to http://localhost:8080 to start-up pgAdmin, use credentials passed in the docker run command. To connect pgAdmin container to postgres container, create server in pgAdmin and enter server details.
 
-#### Dockerizing the Ingestion Script
-1. Convert ingest_ny_taxi_data.ipynb to a python script. ```bash jupyter nbconvert --to=script {notebook.ipynb} ```
+### Dockerizing the Ingestion Script
+1. Convert ingest_ny_taxi_data.ipynb to a python script.
+`jupyter nbconvert --to=script {notebook.ipynb}`
 
-(note: before moving to step 2, drop ny_taxi data table in Postgres)
+(Note: before moving to step 2, drop ny_taxi data table in Postgres)
 
-```sql
-DROP TABLE yellow_taxi_data;
-```
-* There are multiple methods to ingest the data into pg-database. 
+`sql DROP TABLE yellow_taxi_data;`
+
+*** There are multiple methods to ingest the data into pg-database, below are some ways to ingest:
 
   2a. Ingest Data via python command
     ```bash
@@ -161,20 +167,13 @@ DROP TABLE yellow_taxi_data;
   * Edit Dockerfile
   ```bash
   FROM python:latest
-
-  # installs app dependencies
   RUN pip install pandas sqlalchemy psycopg2-binary pyarrow
-
-  # sets the workin dir inside container
   WORKDIR /app 
-
-  # copies the app code from local into container
   COPY ingest_ny_taxi_data.py ingest_ny_taxi_data.py
-
   ENTRYPOINT [ "python", "ingest_ny_taxi_data.py" ]
   ```
-  * Build in Docker```bash docker build -t taxi_ingest:v001 .```
-    
+  * Build and Run in Docker: `docker build -t taxi_ingest:v001 .`
+
     ```bash
     docker run -it \
       --network=pg-network \
