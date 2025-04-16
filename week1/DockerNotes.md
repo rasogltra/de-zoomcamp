@@ -25,11 +25,11 @@ Run command `docker run hello-world` to test if docker is installed properly.
 ### Dockerfile
 We created a Dockerfile using a Python 3.9 base image to setup an enivoronment within a Docker container. Below are the steps to setup the environment:
 
-`FROM python:3.9
+```FROM python:3.9
 RUN pip install pandas
 WORKDIR /app
 COPY pipeline_Source.py pipeline_Dest.py
-ENTRYPOINT["python", "pipeline.py"]`
+ENTRYPOINT["python", "pipeline.py"]```
 
 #### Breakdown of the Dockerfile
 `FROM python:3.9` - This line specifies the base image to use for the container. In our case, it was Python ver. 3.9.
