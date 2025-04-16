@@ -150,6 +150,7 @@ Note: Before proceeding to step 2, make sure to drop the `ny_taxi` data table in
 2. There are several methods to ingest data into the Postgres database. Below are a few common ways to do so: 
 
   2a. Method 1: Ingest Data Using a Python Command
+  
     ```
     URL="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
 
