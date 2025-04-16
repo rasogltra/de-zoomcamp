@@ -29,7 +29,7 @@ We created a Dockerfile using a Python 3.9 base image to setup an enivoronment w
 RUN pip install pandas
 WORKDIR /app
 COPY pipeline_Source.py pipeline_Dest.py
-ENTRYPOINT["python", "pipeline.py"]
+ENTRYPOINT["python", "pipeline.py"]`
 
 #### Breakdown of the Dockerfile
 `FROM python:3.9` - This line specifies the base image to use for the container. In our case, it was Python ver. 3.9.
@@ -139,16 +139,16 @@ You should be able to to see in web browser: http://localhost:8080/.
 3. Create a new server on pgAdmin UI. Go to http://localhost:8080 to start-up pgAdmin, use credentials passed in the docker run command. To connect pgAdmin container to postgres container, create server in pgAdmin and enter server details.
 
 ### Dockerizing the Ingestion Script
-1. Convert ingest_ny_taxi_data.ipynb to a python script.
+1. Use jupyter notebook to convert ingest_ny_taxi_data.ipynb to a python script.
 `jupyter nbconvert --to=script {notebook.ipynb}`
 
 (Note: before moving to step 2, drop ny_taxi data table in Postgres)
 
 `sql DROP TABLE yellow_taxi_data;`
 
-*** There are multiple methods to ingest the data into pg-database, below are some ways to ingest:
+2. There are multiple methods to ingest the data into pg-database, below are some ways to ingest:
 
-  2a. Ingest Data via python command
+  2a. Method1: Ingest Data via python command
     ```bash
     URL="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
 
@@ -161,20 +161,28 @@ You should be able to to see in web browser: http://localhost:8080/.
     --url=${URL} \
     --table_name=yellow_taxi_data
     ```
-    Check web browser: http://localhost:8080/
+    Go to http://localhost:8080/ to confirm success. This method is not recommended because we're passing credentials. 
   
-  2b. Ingest Data via dockerizing python script
-  * Edit Dockerfile
-  ```bash
-  FROM python:latest
-  RUN pip install pandas sqlalchemy psycopg2-binary pyarrow
-  WORKDIR /app 
-  COPY ingest_ny_taxi_data.py ingest_ny_taxi_data.py
-  ENTRYPOINT [ "python", "ingest_ny_taxi_data.py" ]
-  ```
-  * Build and Run in Docker: `docker build -t taxi_ingest:v001 .`
+  2b. Method 2: Ingest Data via dockerizing python script. See ingest_ny_taxi_data.py. (Recommended!)
+
+    Modify Dockerfile to install additional dependencies.
 
     ```bash
+    FROM python:latest
+    RUN pip install pandas sqlalchemy psycopg2-binary pyarrow
+    WORKDIR /app 
+    COPY ingest_ny_taxi_data.py ingest_ny_taxi_data.py
+    ENTRYPOINT [ "python", "ingest_ny_taxi_data.py" ]
+    ```
+3. Build and Run Ingestion Script
+
+Drop persisted database tables `DROP TABLE yellow_taxi_data;`
+
+Now, build and run the image: 
+
+    ```
+    docker build -t taxi_ingest:v001 .
+
     docker run -it \
       --network=pg-network \
       taxi_ingest:v001 \
@@ -188,9 +196,9 @@ You should be able to to see in web browser: http://localhost:8080/.
     ```
 
 #### Run Postgres and pgadmin with Docker-Compose
-1. See docker-compose.yaml to create a database connection using pg-database. Use docker command docker-compose up -d and docker-compose down to destory.
+1. See docker-compose.yaml. Use docker command docker-compose up -d and docker-compose down to destory.
 
-## Setting up infrastructure on GCP with Terraform
+# Setting up infrastructure on GCP with Terraform
 
 Configure it -> Initialize -> Plan -> Apply -> Destroy
 
