@@ -18,7 +18,8 @@ Run the command `docker run hello-world` to verify that Docker is installed and 
 ### Dockerfile
 We created a Dockerfile using a Python 3.9 base image to setup an enivoronment within a Docker container. Below are the steps to configure the environment:
 
-```FROM python:3.9
+```
+FROM python:3.9
 RUN pip install pandas
 WORKDIR /app
 COPY pipeline_Source.py pipeline_Dest.py
@@ -103,7 +104,9 @@ The command should start the `pgcli` interactivve shell and connect you to postg
 ## Connect pgAdmin and Postgres
 1. Pull pgAdmin container
 2. Run the container
-```docker run -it \
+   
+```
+docker run -it \
   -e PGADMIN_DEFAULT_EMAIL="email@email.com" \
   -e PGADMIN_DEFAULT_PASSWORD="root" \
   -p 8080:80 \
@@ -113,9 +116,11 @@ Note: The pgAdmin container and Postgres containers are still isolated, so we co
 
 ## Add Docker Network
 1. Create Docker Network
+   
 ```docker network create pg-network```
 
-2. Modify the Docker `run` command as needed
+3. Modify the Docker `run` command as needed
+   
 ```
 docker run -it  \
   -e POSTGRES_USER="root" \
@@ -169,7 +174,8 @@ Note: Before proceeding to step 2, make sure to drop the `ny_taxi` data table in
 
     Modify Dockerfile to install additional dependencies.
 
-    ```bash
+    ```
+    bash
     FROM python:latest
     RUN pip install pandas sqlalchemy psycopg2-binary pyarrow
     WORKDIR /app 
