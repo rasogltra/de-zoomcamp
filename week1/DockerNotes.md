@@ -20,10 +20,10 @@ Dataset 2: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
 ## Docker Introduction
 Dockerfile ->(build) Docker Image -> (run) Docker Container
 
-Run command `docker run hello-world` to test if docker is installed properly. 
+Run the command `docker run hello-world` to verify that Docker is installed and working correctly. 
 
 ### Dockerfile
-We created a Dockerfile using a Python 3.9 base image to setup an enivoronment within a Docker container. Below are the steps to setup the environment:
+We created a Dockerfile using a Python 3.9 base image to setup an enivoronment within a Docker container. Below are the steps to configure the environment:
 
 ```FROM python:3.9
 RUN pip install pandas
@@ -32,27 +32,32 @@ COPY pipeline_Source.py pipeline_Dest.py
 ENTRYPOINT["python", "pipeline.py"]```
 
 #### Breakdown of the Dockerfile
-`FROM python:3.9` - This line specifies the base image to use for the container. In our case, it was Python ver. 3.9.
-`RUN pip install pandas` - Installs panda library within the container. 
-`WORKDIR /app` - Sets the working directory inside the container to `/app`.
-`COPY pipeline_Source.py pipeline_Dest.py` - Copies a file (pipeline_Source.py) from local machine into the container's /app directory and renames it to (pipeline_Dest.py).
-`ENTRYPOINT["python", "pipeline.py"]` - This defines the command that will run `pipeline.py` using Python. 
+`FROM python:3.9` - This line specifies the base image for the container, which in our case is Python version 3.9.
+`RUN pip install pandas` - Installs `panda` library inside the container. 
+`WORKDIR /app` - This sets the working directory inside the container to `/app`.
+`COPY pipeline_Source.py pipeline_Dest.py` - This copies the file (pipeline_Source.py) from the local machine into the container's `/app` directory and renames it to (pipeline_Dest.py).
+`ENTRYPOINT["python", "pipeline.py"]` - This defines the command that will run `pipeline.py` using Python when the container starts. 
 
-### Write a script in the Container
-Write a python file using pandas module, name file `pipeline.py`:
+### Write a Python script in the Container
+Create a Python script using pandas module and name the file `pipeline.py`:
+
 ```python
 import pandas as pd
 # do stuff
 print ('Pandas imported!')
 ```
 ### Build and Run the Docker Container
-To build the image, we ran the following command within the Dockerfile directory:
-`docker build -t my-pipeline-img .` and, to run the container from the image, use `docker run -it my-pipeline-img` where `it` stands for interactive mode.
+To build the image, we ran the following command within the directory containing the Dockerfile:
+`docker build -t my-pipeline-img .` 
+
+Then, to run the container from the image, we used the following command `docker run -it my-pipeline-img` .
+
+Note: Ths `it` flag stands for interactive mode, allowing you to interact with the container's terminal session.
 
 ### Ingest NY Taxi data to Postgres database
 
 ## Setup Postgres in Docker
-1. Create a Docker-Compose `yaml` file and name it docker-compose.yaml
+1. Create a Docker-Compose `yaml` file to define your services and configuration.
    ```services:
   pgdatabase:
     image: postgres:13
@@ -72,9 +77,9 @@ To build the image, we ran the following command within the Dockerfile directory
     ports:
       - "8080:80"
 ```
-2. Create folder called ny_taxi_postgres_data for your persistent data.
+2. Create folder named `ny_taxi_postgres_data` to store your persistent data.
 
-Note: `volumes` defines persistent storage for containers. It allows you to store data outside the container, meaning the data persist without the container.
+Note: `volumes` define persistent storage for containers. They allow you to store data outside the container, ensuring that the data persist even if the container is removed or recreated. 
 
 2. Run Postgres with Docker in terminal
 ```bash
@@ -86,14 +91,14 @@ docker run -it  \
   -p 5432:5432 \
   postgres:13
 ```
-If ran properly, then files generate in the `ny_taxi_postgres_data` folder.
+If the process runs correctly, the files will generated in the `ny_taxi_postgres_data` folder.
 
 3. Use `pgcli` to connect to Postgres
 ```
 pip install pgcli
 pgcli -h localhost -p 5432 -u user -d ny_taxi
 ```
-The latter command should start the pgcli interactivve shell and connect you to postgres, where you can run statements like `\dt`. 
+The command should start the `pgcli` interactivve shell and connect you to postgres, where you can run commands like `\dt`. 
 
 ## Jupyter Notebook
 1. Install `pip install jupyter`
@@ -108,13 +113,13 @@ The latter command should start the pgcli interactivve shell and connect you to 
   -p 8080:80 \
   dpage/pgadmin4
 ```
-(Note: pgAdmin container and postgres container are still isolated, so we connectd them via docker network)
+Note: The pgAdmin container and Postgres containers are still isolated, so we connectd them using Docker network.
 
 ## Add Docker Network
 1. Create Docker Network
 ```docker network create pg-network```
 
-2. Modify Docker `run` commands
+2. Modify the Docker `run` command as needed
 ```
 docker run -it  \
   -e POSTGRES_USER="root" \
@@ -134,21 +139,21 @@ docker run -it \
   --name pgadmin \
   dpage/pgadmin4
 ```
-You should be able to to see in web browser: http://localhost:8080/.
+***You should be able access pgAdmin in your browser: http://localhost:8080/.
 
-3. Create a new server on pgAdmin UI. Go to http://localhost:8080 to start-up pgAdmin, use credentials passed in the docker run command. To connect pgAdmin container to postgres container, create server in pgAdmin and enter server details.
+3. To create a a new server in pgAdmin, go to http://localhost:8080 to launch pgAdmin interface. Use credentials provided in the `docker run` command. To connect the pgAdmin container to the Postgres container, create a new server in pgAdmin and enter the necessary server details. 
 
 ### Dockerizing the Ingestion Script
 1. Use jupyter notebook to convert ingest_ny_taxi_data.ipynb to a python script.
 `jupyter nbconvert --to=script {notebook.ipynb}`
 
-(Note: before moving to step 2, drop ny_taxi data table in Postgres)
+Note: Before proceeding to step 2, make sure to drop the `ny_taxi` data table in Postgres.
 
 `sql DROP TABLE yellow_taxi_data;`
 
-2. There are multiple methods to ingest the data into pg-database, below are some ways to ingest:
+2. There are several methods to ingest data into the Postgres database. Below are a few common ways to do so: 
 
-  2a. Method1: Ingest Data via python command
+  2a. Method 1: Ingest Data Using a Python Command
     ```bash
     URL="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
 
@@ -161,9 +166,9 @@ You should be able to to see in web browser: http://localhost:8080/.
     --url=${URL} \
     --table_name=yellow_taxi_data
     ```
-    Go to http://localhost:8080/ to confirm success. This method is not recommended because we're passing credentials. 
+    Go to http://localhost:8080/ to confirm the success. Note that this method is not recommended as it invovles passing credentials. 
   
-  2b. Method 2: Ingest Data via dockerizing python script. See ingest_ny_taxi_data.py. (Recommended!)
+  2b. Method 2: Ingest Data Using a Dockerized Python Script. See ingest_ny_taxi_data.py (Recommended!)
 
     Modify Dockerfile to install additional dependencies.
 
@@ -176,7 +181,7 @@ You should be able to to see in web browser: http://localhost:8080/.
     ```
 3. Build and Run Ingestion Script
 
-Drop persisted database tables `DROP TABLE yellow_taxi_data;`
+To drop the persisted database table, run the following command: `DROP TABLE yellow_taxi_data;`
 
 Now, build and run the image: 
 
