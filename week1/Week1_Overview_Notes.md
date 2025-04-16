@@ -51,7 +51,7 @@ Note: Ths `it` flag stands for interactive mode, allowing you to interact with t
 
 ### Ingest NY Taxi data to Postgres database
 
-## Setup Postgres in Docker
+### Setup Postgres in Docker
 1. Create a Docker-Compose `yaml` file to define your services and configuration.
 ```
   services:
@@ -97,11 +97,11 @@ pgcli -h localhost -p 5432 -u user -d ny_taxi
 ```
 The command should start the `pgcli` interactivve shell and connect you to postgres, where you can run commands like `\dt`. 
 
-## Jupyter Notebook
+### Jupyter Notebook
 1. Install `pip install jupyter`
 2. Ingest the data to Postgres. See ingest_ny_taxi_data.ipynb.
 
-## Connect pgAdmin and Postgres
+### Connect pgAdmin and Postgres
 1. Pull pgAdmin container
 2. Run the container
    
@@ -114,7 +114,7 @@ docker run -it \
 ```
 Note: The pgAdmin container and Postgres containers are still isolated, so we connectd them using Docker network.
 
-## Add Docker Network
+### Add Docker Network
 1. Create Docker Network
    
 ```docker network create pg-network```
