@@ -162,7 +162,5 @@ No need to run `terraform apply` at this point— we’ve already created the bu
 
 See for reference [TerraformNotes.md](https://github.com/rasogltra/de-zoomcamp/blob/main/week1/TerraformNotes.md)
 
-
-
-
-
+## Shutdown VM
+To shut down your VM, you can either run `sudo shutdown now` in the terminal or use the Google Cloud Console to stop the instance manually.
