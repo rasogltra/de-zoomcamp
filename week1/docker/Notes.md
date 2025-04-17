@@ -32,7 +32,7 @@ Run the below to connect SSH to your new machine:
 
 Where external IP is your VMs External IP, located in your gcp console.
 
-### Optional: Configure a SSH alias
+#### Optional: Configure a SSH alias
 
 To easily connect to machine from terminal, make a configuration file to host your server details.
 
