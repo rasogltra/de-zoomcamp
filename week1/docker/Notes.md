@@ -125,7 +125,42 @@ To copy a file from local machine to VM, use the `scp` command:
 `scp /path/to/local/ingest_file.ipynb username@vm_external_ip:/path/on/vm`
 
 ### Terraform - Install and Run
-See See [TerraformNotes.md](https://github.com/rasogltra/de-zoomcamp/blob/main/week1/TerraformNotes.md)
+Earlier, we set up Terraform on our local machines, and now we’re doing the same on our VM instance. 
+
+#### Step 1: Download Terraform
+Start by downloading the Linux binary for Terraform using the command (inside your bin) folder:
+`wget https://releases.hashicorp.com/terraform/1.11.4/terraform_1.11.4_linux_amd64.zip` 
+
+If you haven't already installed `unzip`, you can do with:
+`sudo apt install unzip`
+
+Then unzip the file:
+`unzip terraform_1.11.4_linux_amd64.zip`. 
+
+#### Step 2: Configure gCloud
+Next, let's setup Google Cloud credentials. Locate the `my-creds.json` file in your local Terraform folder and copy it to your server using the `scp` command. Here's an example:
+
+`scp ~/terraform/my-creds.json username@your-server-ip:~/.gc/`
+
+Once the file is on your server, set the environment variable:
+`export GOOGLE_APPLICATION_CREDENTIALS=~/.gc/my-creds.json`. 
+
+Then activate the service account with:
+`gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS`
+
+You should see a message saying the account was activated sucessfully.
+
+Note: The creators of the Datacamp series used `sftp` instead of `scp`. If you're curious, check out this [Youtube Video](https://www.youtube.com/watch?v=ae-CV2KfoN0&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=14) where he walks throuh that method. 
+
+#### Step 4: Run Terram Commands
+Now you're ready to run Terraform commands on the VM:
+```terramform init
+terraform plan
+```
+
+No need to run `terraform apply` at this point— we’ve already created the bucket for this project.
+
+See for reference [TerraformNotes.md](https://github.com/rasogltra/de-zoomcamp/blob/main/week1/TerraformNotes.md)
 
 
 
