@@ -193,7 +193,7 @@ You should be able to access pgAdmin interface via [http://localhost:8080](http:
 
 We registered a new server in pgAdmin “localhost“ that connects to “pg-database” by entering the database details: hostname, port, username, and password.
 
-## CONNECT POSTGRES VIA PGCLI
+## Connect Postgres via pgCLI
 
 Using a CLI client, we can connect to the Postgres container and access the database.
 
@@ -368,7 +368,7 @@ docker run -it \
 
 Navigate to `http://localhost:8080/` to confirm the success.
 
-## RUNNING POSTGRES AND PGADMIN WITH DOCKER-COMPOSE
+## Running Postgres and pgAdmin with Docker-Compose
 
 Alternatively, if we want to run multiple containers at once—like we did with pgAdmin and Postgres—Docker Compose is a tool that makes it easier. Instead of starting each container one by one, we can use a simple `YAML` file to describe them, and then start everything with just one command.
 
