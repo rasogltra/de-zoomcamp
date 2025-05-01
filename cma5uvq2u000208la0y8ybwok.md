@@ -407,7 +407,7 @@ Containers defined within the `YML` are automatically created within the same ne
 
 ---
 
-## Terraform
+## Terraform Introduction
 
 Terraform is a configuration management tool that allows you to define and manage infrastructure resources using code. It automates provisioning and managing infrastructure resources, such as VMs, networks and storage.
 
@@ -432,7 +432,7 @@ brew install hashicorp/tap/terraform
 
 Because we want to use Terraform with GCP, we created a `service account` within the GCP console. A service account is similar to a user account, except the account is managed by the project and represents a non-human identity instead of a real person.
 
-We created an account `terraform-runner`, assigned it `Storage Amin`, `BigQuery admin` and `Compute Admin` roles. We also created and added a JSON key file under `Manage keys` within the GCP console. The key file is automatically downloaded to machine.
+We created an account `terraform-runner`, assigned it `Storage Admin`, `BigQuery Admin` and `Compute Admin` roles. We also created and added a JSON key file under `Manage keys` within the GCP console. The key file is automatically downloaded to machine.
 
 Alternatively, I learned outside the course, that we can create a JSON key for a service account via gcloud CLI. Note, ensure `gcloud` is installed and authenticated.
 
