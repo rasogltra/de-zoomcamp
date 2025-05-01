@@ -3,7 +3,6 @@ title: "Learning Data Engineering: Module 1"
 datePublished: Thu May 01 2025 21:07:12 GMT+0000 (Coordinated Universal Time)
 cuid: cma5uvq2u000208la0y8ybwok
 slug: learning-data-engineering-module-1
-tags: postgresql, docker, github, python, terraform, gcp, dataengineering, datatalksclub
 
 ---
 
