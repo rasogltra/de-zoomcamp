@@ -156,3 +156,121 @@ tasks: # set of instructions to be executed
 ```
 
 ## **BUILD DATA PIPELINE WITH KESTRA**
+
+The first step we took was to extract data from the CSV files into our Postgres database. I created a `docker compose` file to launch Kestra, followed by a separate `docker compose` configuration to start the PostgreSQL service. While it's possible to combine both services into a single docker compose setup as a workaround, I kept them separate to align with the structure presented in the tutorial video.
+
+**EXTRACTING DATA WITH POSTGRES\_TAXI.YAML**
+
+```dockerfile
+volumes:
+  postgres-data:
+    driver: local
+  kestra-data:
+    driver: local
+
+services:
+  postgres:
+    image: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: kestra
+      POSTGRES_USER: kestra
+      POSTGRES_PASSWORD: k3str4
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  kestra:
+    image: kestra/kestra:v0.20.7
+    pull_policy: always
+    user: "root"
+    command: server standalone
+    volumes:
+      - kestra-data:/app/storage
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp/kestra-wd
+    environment:
+      KESTRA_CONFIGURATION: |
+        datasources:
+          postgres:
+            url: jdbc:postgresql://postgres:5432/kestra
+            driverClassName: org.postgresql.Driver
+            username: kestra
+            password: k3str4
+        kestra:
+          server:
+            basicAuth:
+              enabled: false
+              username: "admin@admin.com" # it must be a valid email address
+              password: kestra
+          repository:
+            type: postgres
+          storage:
+            type: local
+            local:
+              basePath: "/app/storage"
+          queue:
+            type: postgres
+          tasks:
+            tmpDir:
+              path: /tmp/kestra-wd/tmp
+          url: http://localhost:8080/
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_started
+```
+
+To begin extracting the data, we created a `postgres_taxi.yaml` file that handles both extracting and loading data into our PostgreSQL database. Following the approach demonstrated in the tutorial video, I started with a small, manageable dataset—the 'green' taxi data from January 2019—to make sure everything was working correctly before scaling up.
+
+If you're unfamiliar with how Kestra’s flows is structured or what each part does, check out the breakdown in the video below for a step-by-step explanation.
+
+```yaml
+id: postgres_taxi
+namespace: company.team
+
+inputs:
+  - id: taxi
+    type: SELECT
+    displayName: Select taxi type
+    values: [yellow, green]
+    defaults: yellow
+
+  - id: year
+    type: SELECT
+    displayName: Select year
+    values: ["2019", "2020"]
+    defaults: "2019"
+
+  - id: month
+    type: SELECT
+    displayName: Select month
+    values: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+    defaults: "01"
+
+variables:
+    file: "{{inputs.taxi}}_tripdata_{{inputs.year}}-{{inputs.month}}.csv"
+    staging_table: "public.{{inputs.taxi}}_tripdata_staging"
+    table: "public.{{inputs.taxi}}_tripdata"
+    data: "{{outputs.extract.outputFiles[inputs.taxi ~ '_tripdata_' ~ inputs.year ~ '-' ~ inputs.month ~ '.csv']}}"
+
+tasks:
+  - id: set_label
+    type: io.kestra.plugin.core.execution.Labels
+    labels:
+      file: "{{render(vars.file)}}"
+      taxi: "{{inputs.taxi}}"
+
+  - id: extract
+    type: io.kestra.plugin.scripts.shell.Commands
+    outputFiles:
+      - "*.csv"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - wget -qO- https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{{inputs.taxi}}/{{render(vars.file)}}.gz | gunzip > {{render(vars.file)}}
+```
