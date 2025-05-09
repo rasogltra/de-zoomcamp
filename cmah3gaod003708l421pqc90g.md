@@ -574,7 +574,7 @@ Notice that we added `if-statements` to process either the yellow or green datas
 
 ![](https://cdn.hashnode.com/res/hashnode/image/upload/v1746808823854/71b0e7e2-ec1a-467f-9990-415db1053bac.png align="center")
 
-Next, we’ll set up a Postgres database using Docker. We’ll use a `docker-compose.yml` file to easily run both Postgres and PgAdmin in connected containers. This approach was covered in depth back in [Module 1](https://hashnode.com/post/cma6041mk000e09js1jdrdw8u), so revisit that if in need of a refresher.
+Next, we’ll set up a Postgres database using Docker. We’ll use a `docker-compose.yml` file to easily run both Postgres and PgAdmin in connected containers. This approach was covered in depth back in [Module 1](https://hashnode.com/edit/cma5uvq2u000208la0y8ybwok), so revisit that if in need of a refresher.
 
 I’m running PgAdmin inside Docker, so I connect to Postgres from my PgAdmin container — *not* from `localhost`. This is because containers talk to each other over a shared Docker network, and `localhost` would point to the PgAdmin container itself, not Postgres.
 
@@ -584,7 +584,7 @@ Here’s what helped:
     
 * Make sure both containers are on the **same docker network** (docker compose handles this automatically if they’re in the same `docker-compose.yaml` file).
     
-* I used the same PgAdmin login credentials that were used in [Module 1](https://hashnode.com/post/cma6041mk000e09js1jdrdw8u).
+* I used the same PgAdmin login credentials that were used in [Module 1](https://hashnode.com/edit/cma5uvq2u000208la0y8ybwok).
     
 
 ```dockerfile
