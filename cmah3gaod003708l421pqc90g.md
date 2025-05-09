@@ -3,7 +3,7 @@ title: "Learning Data Engineering: Module 2"
 datePublished: Fri May 09 2025 17:52:37 GMT+0000 (Coordinated Universal Time)
 cuid: cmah3gaod003708l421pqc90g
 slug: learning-data-engineering-module-2
-tags: postgresql, data-pipeline, kestra
+tags: postgresql, data-pipeline, cronjob, scheduling, kestra
 
 ---
 
