@@ -160,7 +160,7 @@ tasks: # set of instructions to be executed
 
 ## **BUILD DATA PIPELINE WITH KESTRA**
 
-The first step we took was to extract data from the CSV files. I created a `docker compose` file to launch Kestra, followed by a separate `docker compose` configuration to start the Postgres service. While it's possible to combine both services into a singular docker compose setup as a workaround, I kept them separate to align with the structure presented in the [tutorial video](https://www.youtube.com/watch?v=OkfLX28Ecjg).
+The first step we took was to extract data from the CSV files. I created a `docker compose` file to launch Kestra, followed by in a separate directory, I ran `docker compose` configuration to start the Postgres service. While it's possible to combine both services into a singular docker compose setup as a workaround, I kept them separate to align with the structure presented in the [tutorial video](https://www.youtube.com/watch?v=OkfLX28Ecjg).
 
 **EXTRACTING DATA WITH POSTGRES\_TAXI.YAML**
 
@@ -566,7 +566,7 @@ For example, if the inputs are `yellow`, `2019`, and `01`, it becomes `yellow_tr
                 filename = '{{render(vars.file)}}';
 ```
 
-**MERGING DATA WITH POSTGRES\_TAXI.YAML**
+**LOAD TAXI DATA TO POSTGRES**
 
 I found the **"Source and Topology"** tabs in Kestra helpful for visualizing the entire flow. In my screenshot, I’m highlighting the steps Kestra takes to extract the data, create our Postgres table for yellow taxi datasets (part of green taxi got cut off), and then copy the data into our database.
 
@@ -621,4 +621,58 @@ volumes:
 
 After starting Postgres with the command `docker-compose up -d`, navigate to your browser and enter your pgadmin credentials. A successful execution in Kestra should complete all flow tasks and migrate the data to our database and in PgAdmin, you should see both the green and yellow taxi data in your database.
 
-![](https://cdn.hashnode.com/res/hashnode/image/upload/v1746811168801/1412ef82-392a-437f-b8b8-2c3ab4a12650.png align="center")
+![](https://cdn.hashnode.com/res/hashnode/image/upload/v1746814173905/4db5d6e0-02be-44f2-b38b-b3dd88344d88.png align="center")
+
+**SCHEDULING AND BACKFILLS WITH POSTGRES**
+
+We’re automating our pipeline using a cron scheduler to run backfills on historical data. To do this, we made a few updates to `postgres_taxi.yaml`, specifically modifying the inputs and variables, and adding triggers.
+
+In Kestra, I created a new flow called `postgres_taxi_scheduled`, which accepts `taxi_type` as input and uses a trigger to dynamically provide the year and month.
+
+The core tasks in the flow remain unchanged. This is reflected in the Topology view, where the structure and logic of the flow are largely the same, with the main difference being the addition of the trigger.
+
+```yaml
+id: postgres_taxi_scheduled
+namespace: zoomcamp
+
+concurrency:
+  limit: 1
+
+inputs:
+  - id: taxi
+    type: SELECT
+    displayName: Select taxi type
+    values: [yellow, green]
+    defaults: yellow
+
+variables:
+  file: "{{inputs.taxi}}_tripdata_{{trigger.date | date ('yyyy-MM')}}.csv"
+  staging_table: "public.{{inputs.taxi}}_tripdata_staging"
+  table: "public.{{inputs.taxi}}_tripdata"
+  data: "{{outputs.extract.outputFiles[inputs.taxi ~ '_tripdata_' ~ (trigger.date | date('yyyy-MM')) ~ '.csv']}}"
+```
+
+At the bottom of the YAML file, just after `pluginDefaults`, we define the triggers for both green and yellow taxis. These are scheduled to run automatically on the first day of each month—green taxi data at 9:00 AM and yellow taxi data at 10:00 AM.
+
+```yaml
+triggers:
+  - id: green_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 9 1 * *"
+    inputs:
+      taxi: green
+
+  - id: yellow_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 10 1 * *"
+    inputs:
+      taxi: yellow
+```
+
+To fill in any missing data from 2019, we'll use Kestra's `backfill execution` feature. We've configured execution labels to indicate whether a run is a backfill, making it easy to track. After triggering the backfill, the Postgres tables should be populated for all twelve months, from `January 1st` to `December 31st, 2019`.
+
+![](https://cdn.hashnode.com/res/hashnode/image/upload/v1746823221096/de303e86-4aec-4e4c-9620-9fbb03389359.png align="center")
+
+I followed the [tutorial video](https://www.youtube.com/watch?v=_-li_z97zog), which provides a deeper look into how these functions work in Kestra.
+
+.
