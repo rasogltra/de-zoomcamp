@@ -1,0 +1,36 @@
+services:
+  pgdatabase:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=ny_taxi
+    volumes:
+      - "./ny_taxi_postgres_data:/var/lib/postgresql/data:rw"
+    ports:
+      - "5432:5432"
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=root
+    ports:
+      - "8080:80"
+  kestra:
+    image: kestra/kestra:latest
+    container_name: kestra
+    ports:
+      - "8090:8080"
+    depends_on:
+      - pgdatabase
+    environment: 
+      KESTRA_CONFIGURATION:
+      - KESTRA_CONFIGURATION=kestra.server-type=STANDALONE
+      - KESTRA_DATABASE_TYPE=postgresql
+      - KESTRA_DATABASE_URL=jdbc:postgresql://pgdatabase:5432/ny_taxi
+      - KESTRA_DATABASE_USERNAME=root
+      - KESTRA_DATABASE_PASSWORD=root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+    command: server standalone
