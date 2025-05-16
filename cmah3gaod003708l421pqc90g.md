@@ -1,8 +1,8 @@
 ---
-title: "Mastering Data Engineering: Workflow Orchestration"
+title: "Workflow Orchestration for Scalable Data Pipelines"
 datePublished: Fri May 09 2025 17:52:37 GMT+0000 (Coordinated Universal Time)
 cuid: cmah3gaod003708l421pqc90g
-slug: learning-data-engineering-module-2
+slug: learning-data-engineering-orchestration
 tags: postgresql, orchestration, data-pipeline, cronjob, scheduling, kestra
 
 ---
