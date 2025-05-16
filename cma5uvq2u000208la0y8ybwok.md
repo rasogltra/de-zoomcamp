@@ -1,12 +1,13 @@
 ---
-title: "Learning Data Engineering: Module 1"
+title: "Mastering Data Engineering: Docker and Terraform"
 datePublished: Thu May 01 2025 21:07:12 GMT+0000 (Coordinated Universal Time)
 cuid: cma5uvq2u000208la0y8ybwok
-slug: learning-data-engineering-module-1
+slug: mastering-data-engineering-docker-terraform
+tags: docker, python, terraform, gcp
 
 ---
 
-This is my tech journal tracking a data engineering course, here: [https://github.com/DataTalksClub/data-engineering-zoomcamp](https://github.com/DataTalksClub/data-engineering-zoomcamp).
+This is my tech journal tracking a data engineering course with DataTalksClub: [https://github.com/DataTalksClub/data-engineering-zoomcamp](https://github.com/DataTalksClub/data-engineering-zoomcamp).
 
 ## Prerequisites
 
