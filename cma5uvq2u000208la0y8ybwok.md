@@ -1,8 +1,8 @@
 ---
-title: "Introduction to Scalable Data Engineering"
+title: "Google Cloud Data Ingestion: A Step-by-Step Guide"
 datePublished: Thu May 01 2025 21:07:12 GMT+0000 (Coordinated Universal Time)
 cuid: cma5uvq2u000208la0y8ybwok
-slug: mastering-core-data-engineering-concepts
+slug: mastering-core-data-engineering-pipeline
 tags: docker, python, terraform, gcp
 
 ---
