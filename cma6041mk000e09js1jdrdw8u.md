@@ -1,8 +1,8 @@
 ---
-title: "Learning Data Engineering: Module 1B"
+title: "Mastering Data Engineering: Cloud"
 datePublished: Thu May 01 2025 23:33:39 GMT+0000 (Coordinated Universal Time)
 cuid: cma6041mk000e09js1jdrdw8u
-slug: learning-data-engineering-module-1b
+slug: mastering-data-engineering-cloud
 tags: vm, ssh, terraform, gcp, jupyter-notebook, sudo, portfowarding
 
 ---
