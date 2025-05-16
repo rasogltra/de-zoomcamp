@@ -1,5 +1,5 @@
 ---
-title: "Mastering Data Engineering: Cloud"
+title: "Setting Up Your Cloud Data Platform with Terraform"
 datePublished: Thu May 01 2025 23:33:39 GMT+0000 (Coordinated Universal Time)
 cuid: cma6041mk000e09js1jdrdw8u
 slug: mastering-data-engineering-cloud
