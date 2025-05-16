@@ -675,4 +675,319 @@ To fill in any missing data from 2019, we'll use Kestra's `backfill execution` f
 
 I followed the [tutorial video](https://www.youtube.com/watch?v=_-li_z97zog), which provides a deeper look into how these functions work in Kestra.
 
-.
+**ETL PIPELINE IN KESTRA USING GOGLE CLOUD STORAGE**
+
+Another option is to upload the same data to a data lake like Google Cloud Storage (GCS), then use BigQuery to create tables from the taxi `.csv` files. That way, I can run queries just like I would in Postgres.
+
+1. We set up our Google Cloud credentials using the `KV Store` in Kestra and created a service account—pretty similar to how it's done for Terraform. In the GCP console, I created a service account called `data-lake-big-query` and gave it the BigQuery Admin and Storage Admin roles. I ran into permission issues at this step, so make sure your roles are assigned at the **project level** to avoid access problems.
+    
+2. I created a new key in GCP and copied the entire JSON content into a new key-value entry in the `KV Store`.
+    
+3. In `gcp_kv`, we use the variables where you'll need to provide your `project ID` and set a globally unique `bucket name`. This flow then saves those variables to the `KV Store`, which I confirmed.
+    
+    ```yaml
+    id: gcp_kv
+    namespace: zoomcamp
+    
+    tasks:
+      - id: gcp_project_id
+        type: io.kestra.plugin.core.kv.Set
+        key: GCP_PROJECT_ID
+        kvType: STRING
+        value: # TODO replace with your project id
+    
+      - id: gcp_location
+        type: io.kestra.plugin.core.kv.Set
+        key: GCP_LOCATION
+        kvType: STRING
+        value: europe-west2
+    
+      - id: gcp_bucket_name
+        type: io.kestra.plugin.core.kv.Set
+        key: GCP_BUCKET_NAME
+        kvType: STRING
+        value: # TODO make sure it's globally unique!
+    
+      - id: gcp_dataset
+        type: io.kestra.plugin.core.kv.Set
+        key: GCP_DATASET
+        kvType: STRING
+        value: zoomcamp
+    ```
+    
+4. The `gcp_setup` flow creates our Google Cloud Storage bucket and sets up the cloud environment using the variables from `gcp_kv`.
+    
+    ```yaml
+    id: gcp_setup
+    namespace: zoomcamp
+    
+    tasks:
+      - id: create_gcs_bucket
+        type: io.kestra.plugin.gcp.gcs.CreateBucket
+        ifExists: SKIP
+        storageClass: REGIONAL
+        name: "{{kv('GCP_BUCKET_NAME')}}" # make sure it's globally unique!
+    
+      - id: create_bq_dataset
+        type: io.kestra.plugin.gcp.bigquery.CreateDataset
+        name: "{{kv('GCP_DATASET')}}"
+        ifExists: SKIP
+    
+    pluginDefaults:
+      - type: io.kestra.plugin.gcp
+        values:
+          serviceAccount: "{{kv('GCP_CREDS')}}"
+          projectId: "{{kv('GCP_PROJECT_ID')}}"
+          location: "{{kv('GCP_LOCATION')}}"
+          bucket: "{{kv('GCP_BUCKET_NAME')}}"
+    ```
+    
+    5. The `gcp_taxi` flow uploads our data to the Google Cloud Storage data lake, where we repeat similar steps—like creating tables and purging files—as we did when importing into Postgres. The key difference is that this time, the data ends up in our cloud-based warehouse, BigQuery. In this example, I ran `gcp_taxi` on the green taxi data for January and February 2019, and did the same for yellow taxi. As a result, you should see four `.csv` files in your Kestra bucket and multiple tables or files in BigQuery.
+        
+        ```yaml
+        id: gcp_taxi
+        namespace: zoomcamp
+        description: |
+          The CSV Data used in the course: https://github.com/DataTalksClub/nyc-tlc-data/releases
+        
+        inputs:
+          - id: taxi
+            type: SELECT
+            displayName: Select taxi type
+            values: [yellow, green]
+            defaults: green
+        
+          - id: year
+            type: SELECT
+            displayName: Select year
+            values: ["2019", "2020"]
+            defaults: "2019"
+            allowCustomValue: true # allows you to type 2021 from the UI for the homework 🤗
+        
+          - id: month
+            type: SELECT
+            displayName: Select month
+            values: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+            defaults: "01"
+        
+        variables:
+          file: "{{inputs.taxi}}_tripdata_{{inputs.year}}-{{inputs.month}}.csv"
+          gcs_file: "gs://{{kv('GCP_BUCKET_NAME')}}/{{vars.file}}"
+          table: "{{kv('GCP_DATASET')}}.{{inputs.taxi}}_tripdata_{{inputs.year}}_{{inputs.month}}"
+          data: "{{outputs.extract.outputFiles[inputs.taxi ~ '_tripdata_' ~ inputs.year ~ '-' ~ inputs.month ~ '.csv']}}"
+        
+        tasks:
+          - id: set_label
+            type: io.kestra.plugin.core.execution.Labels
+            labels:
+              file: "{{render(vars.file)}}"
+              taxi: "{{inputs.taxi}}"
+              
+          - id: extract
+            type: io.kestra.plugin.scripts.shell.Commands
+            outputFiles:
+              - "*.csv"
+            taskRunner:
+              type: io.kestra.plugin.core.runner.Process
+            commands:
+              - wget -qO- https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{{inputs.taxi}}/{{render(vars.file)}}.gz | gunzip > {{render(vars.file)}}
+          
+          - id: upload_to_gcs
+            type: io.kestra.plugin.gcp.gcs.Upload
+            from: "{{render(vars.data)}}"
+            to: "{{render(vars.gcs_file)}}"
+        
+          - id: if_yellow_taxi
+            type: io.kestra.plugin.core.flow.If
+            condition: "{{inputs.taxi == 'yellow'}}"
+            then:
+              - id: bq_yellow_tripdata
+                type: io.kestra.plugin.gcp.bigquery.Query
+                sql: |
+                  CREATE TABLE IF NOT EXISTS `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.yellow_tripdata`
+                  (
+                      unique_row_id BYTES OPTIONS (description = 'A unique identifier for the trip, generated by hashing key trip attributes.'),
+                      filename STRING OPTIONS (description = 'The source filename from which the trip data was loaded.'),      
+                      VendorID STRING OPTIONS (description = 'A code indicating the LPEP provider that provided the record. 1= Creative Mobile Technologies, LLC; 2= VeriFone Inc.'),
+                      tpep_pickup_datetime TIMESTAMP OPTIONS (description = 'The date and time when the meter was engaged'),
+                      tpep_dropoff_datetime TIMESTAMP OPTIONS (description = 'The date and time when the meter was disengaged'),
+                      passenger_count INTEGER OPTIONS (description = 'The number of passengers in the vehicle. This is a driver-entered value.'),
+                      trip_distance NUMERIC OPTIONS (description = 'The elapsed trip distance in miles reported by the taximeter.'),
+                      RatecodeID STRING OPTIONS (description = 'The final rate code in effect at the end of the trip. 1= Standard rate 2=JFK 3=Newark 4=Nassau or Westchester 5=Negotiated fare 6=Group ride'),
+                      store_and_fwd_flag STRING OPTIONS (description = 'This flag indicates whether the trip record was held in vehicle memory before sending to the vendor, aka "store and forward," because the vehicle did not have a connection to the server. TRUE = store and forward trip, FALSE = not a store and forward trip'),
+                      PULocationID STRING OPTIONS (description = 'TLC Taxi Zone in which the taximeter was engaged'),
+                      DOLocationID STRING OPTIONS (description = 'TLC Taxi Zone in which the taximeter was disengaged'),
+                      payment_type INTEGER OPTIONS (description = 'A numeric code signifying how the passenger paid for the trip. 1= Credit card 2= Cash 3= No charge 4= Dispute 5= Unknown 6= Voided trip'),
+                      fare_amount NUMERIC OPTIONS (description = 'The time-and-distance fare calculated by the meter'),
+                      extra NUMERIC OPTIONS (description = 'Miscellaneous extras and surcharges. Currently, this only includes the $0.50 and $1 rush hour and overnight charges'),
+                      mta_tax NUMERIC OPTIONS (description = '$0.50 MTA tax that is automatically triggered based on the metered rate in use'),
+                      tip_amount NUMERIC OPTIONS (description = 'Tip amount. This field is automatically populated for credit card tips. Cash tips are not included.'),
+                      tolls_amount NUMERIC OPTIONS (description = 'Total amount of all tolls paid in trip.'),
+                      improvement_surcharge NUMERIC OPTIONS (description = '$0.30 improvement surcharge assessed on hailed trips at the flag drop. The improvement surcharge began being levied in 2015.'),
+                      total_amount NUMERIC OPTIONS (description = 'The total amount charged to passengers. Does not include cash tips.'),
+                      congestion_surcharge NUMERIC OPTIONS (description = 'Congestion surcharge applied to trips in congested zones')
+                  )
+                  PARTITION BY DATE(tpep_pickup_datetime);
+        
+              - id: bq_yellow_table_ext
+                type: io.kestra.plugin.gcp.bigquery.Query
+                sql: |
+                  CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}_ext`
+                  (
+                      VendorID STRING OPTIONS (description = 'A code indicating the LPEP provider that provided the record. 1= Creative Mobile Technologies, LLC; 2= VeriFone Inc.'),
+                      tpep_pickup_datetime TIMESTAMP OPTIONS (description = 'The date and time when the meter was engaged'),
+                      tpep_dropoff_datetime TIMESTAMP OPTIONS (description = 'The date and time when the meter was disengaged'),
+                      passenger_count INTEGER OPTIONS (description = 'The number of passengers in the vehicle. This is a driver-entered value.'),
+                      trip_distance NUMERIC OPTIONS (description = 'The elapsed trip distance in miles reported by the taximeter.'),
+                      RatecodeID STRING OPTIONS (description = 'The final rate code in effect at the end of the trip. 1= Standard rate 2=JFK 3=Newark 4=Nassau or Westchester 5=Negotiated fare 6=Group ride'),
+                      store_and_fwd_flag STRING OPTIONS (description = 'This flag indicates whether the trip record was held in vehicle memory before sending to the vendor, aka "store and forward," because the vehicle did not have a connection to the server. TRUE = store and forward trip, FALSE = not a store and forward trip'),
+                      PULocationID STRING OPTIONS (description = 'TLC Taxi Zone in which the taximeter was engaged'),
+                      DOLocationID STRING OPTIONS (description = 'TLC Taxi Zone in which the taximeter was disengaged'),
+                      payment_type INTEGER OPTIONS (description = 'A numeric code signifying how the passenger paid for the trip. 1= Credit card 2= Cash 3= No charge 4= Dispute 5= Unknown 6= Voided trip'),
+                      fare_amount NUMERIC OPTIONS (description = 'The time-and-distance fare calculated by the meter'),
+                      extra NUMERIC OPTIONS (description = 'Miscellaneous extras and surcharges. Currently, this only includes the $0.50 and $1 rush hour and overnight charges'),
+                      mta_tax NUMERIC OPTIONS (description = '$0.50 MTA tax that is automatically triggered based on the metered rate in use'),
+                      tip_amount NUMERIC OPTIONS (description = 'Tip amount. This field is automatically populated for credit card tips. Cash tips are not included.'),
+                      tolls_amount NUMERIC OPTIONS (description = 'Total amount of all tolls paid in trip.'),
+                      improvement_surcharge NUMERIC OPTIONS (description = '$0.30 improvement surcharge assessed on hailed trips at the flag drop. The improvement surcharge began being levied in 2015.'),
+                      total_amount NUMERIC OPTIONS (description = 'The total amount charged to passengers. Does not include cash tips.'),
+                      congestion_surcharge NUMERIC OPTIONS (description = 'Congestion surcharge applied to trips in congested zones')
+                  )
+                  OPTIONS (
+                      format = 'CSV',
+                      uris = ['{{render(vars.gcs_file)}}'],
+                      skip_leading_rows = 1,
+                      ignore_unknown_values = TRUE
+                  );
+        
+              - id: bq_yellow_table_tmp
+                type: io.kestra.plugin.gcp.bigquery.Query
+                sql: |
+                  CREATE OR REPLACE TABLE `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}`
+                  AS
+                  SELECT
+                    MD5(CONCAT(
+                      COALESCE(CAST(VendorID AS STRING), ""),
+                      COALESCE(CAST(tpep_pickup_datetime AS STRING), ""),
+                      COALESCE(CAST(tpep_dropoff_datetime AS STRING), ""),
+                      COALESCE(CAST(PULocationID AS STRING), ""),
+                      COALESCE(CAST(DOLocationID AS STRING), "")
+                    )) AS unique_row_id,
+                    "{{render(vars.file)}}" AS filename,
+                    *
+                  FROM `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}_ext`;
+        
+              - id: bq_yellow_merge
+                type: io.kestra.plugin.gcp.bigquery.Query
+                sql: |
+                  MERGE INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.yellow_tripdata` T
+                  USING `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}` S
+                  ON T.unique_row_id = S.unique_row_id
+                  WHEN NOT MATCHED THEN
+                    INSERT (unique_row_id, filename, VendorID, tpep_pickup_datetime, tpep_dropoff_datetime, passenger_count, trip_distance, RatecodeID, store_and_fwd_flag, PULocationID, DOLocationID, payment_type, fare_amount, extra, mta_tax, tip_amount, tolls_amount, improvement_surcharge, total_amount, congestion_surcharge)
+                    VALUES (S.unique_row_id, S.filename, S.VendorID, S.tpep_pickup_datetime, S.tpep_dropoff_datetime, S.passenger_count, S.trip_distance, S.RatecodeID, S.store_and_fwd_flag, S.PULocationID, S.DOLocationID, S.payment_type, S.fare_amount, S.extra, S.mta_tax, S.tip_amount, S.tolls_amount, S.improvement_surcharge, S.total_amount, S.congestion_surcharge);
+              
+          - id: if_green_taxi
+            type: io.kestra.plugin.core.flow.If
+            condition: "{{inputs.taxi == 'green'}}"
+            then:
+              - id: bq_green_tripdata
+                type: io.kestra.plugin.gcp.bigquery.Query
+                sql: |
+                  CREATE TABLE IF NOT EXISTS `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.green_tripdata`
+                  (
+                      unique_row_id BYTES OPTIONS (description = 'A unique identifier for the trip, generated by hashing key trip attributes.'),
+                      filename STRING OPTIONS (description = 'The source filename from which the trip data was loaded.'),      
+                      VendorID STRING OPTIONS (description = 'A code indicating the LPEP provider that provided the record. 1= Creative Mobile Technologies, LLC; 2= VeriFone Inc.'),
+                      lpep_pickup_datetime TIMESTAMP OPTIONS (description = 'The date and time when the meter was engaged'),
+                      lpep_dropoff_datetime TIMESTAMP OPTIONS (description = 'The date and time when the meter was disengaged'),
+                      store_and_fwd_flag STRING OPTIONS (description = 'This flag indicates whether the trip record was held in vehicle memory before sending to the vendor, aka "store and forward," because the vehicle did not have a connection to the server. Y= store and forward trip N= not a store and forward trip'),
+                      RatecodeID STRING OPTIONS (description = 'The final rate code in effect at the end of the trip. 1= Standard rate 2=JFK 3=Newark 4=Nassau or Westchester 5=Negotiated fare 6=Group ride'),
+                      PULocationID STRING OPTIONS (description = 'TLC Taxi Zone in which the taximeter was engaged'),
+                      DOLocationID STRING OPTIONS (description = 'TLC Taxi Zone in which the taximeter was disengaged'),
+                      passenger_count INT64 OPTIONS (description = 'The number of passengers in the vehicle. This is a driver-entered value.'),
+                      trip_distance NUMERIC OPTIONS (description = 'The elapsed trip distance in miles reported by the taximeter.'),
+                      fare_amount NUMERIC OPTIONS (description = 'The time-and-distance fare calculated by the meter'),
+                      extra NUMERIC OPTIONS (description = 'Miscellaneous extras and surcharges. Currently, this only includes the $0.50 and $1 rush hour and overnight charges'),
+                      mta_tax NUMERIC OPTIONS (description = '$0.50 MTA tax that is automatically triggered based on the metered rate in use'),
+                      tip_amount NUMERIC OPTIONS (description = 'Tip amount. This field is automatically populated for credit card tips. Cash tips are not included.'),
+                      tolls_amount NUMERIC OPTIONS (description = 'Total amount of all tolls paid in trip.'),
+                      ehail_fee NUMERIC,
+                      improvement_surcharge NUMERIC OPTIONS (description = '$0.30 improvement surcharge assessed on hailed trips at the flag drop. The improvement surcharge began being levied in 2015.'),
+                      total_amount NUMERIC OPTIONS (description = 'The total amount charged to passengers. Does not include cash tips.'),
+                      payment_type INTEGER OPTIONS (description = 'A numeric code signifying how the passenger paid for the trip. 1= Credit card 2= Cash 3= No charge 4= Dispute 5= Unknown 6= Voided trip'),
+                      trip_type STRING OPTIONS (description = 'A code indicating whether the trip was a street-hail or a dispatch that is automatically assigned based on the metered rate in use but can be altered by the driver. 1= Street-hail 2= Dispatch'),
+                      congestion_surcharge NUMERIC OPTIONS (description = 'Congestion surcharge applied to trips in congested zones')
+                  )
+                  PARTITION BY DATE(lpep_pickup_datetime);
+              - id: bq_green_table_ext
+                type: io.kestra.plugin.gcp.bigquery.Query
+                sql: |
+                  CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}_ext`
+                  (
+                      VendorID STRING OPTIONS (description = 'A code indicating the LPEP provider that provided the record. 1= Creative Mobile Technologies, LLC; 2= VeriFone Inc.'),
+                      lpep_pickup_datetime TIMESTAMP OPTIONS (description = 'The date and time when the meter was engaged'),
+                      lpep_dropoff_datetime TIMESTAMP OPTIONS (description = 'The date and time when the meter was disengaged'),
+                      store_and_fwd_flag STRING OPTIONS (description = 'This flag indicates whether the trip record was held in vehicle memory before sending to the vendor, aka "store and forward," because the vehicle did not have a connection to the server. Y= store and forward trip N= not a store and forward trip'),
+                      RatecodeID STRING OPTIONS (description = 'The final rate code in effect at the end of the trip. 1= Standard rate 2=JFK 3=Newark 4=Nassau or Westchester 5=Negotiated fare 6=Group ride'),
+                      PULocationID STRING OPTIONS (description = 'TLC Taxi Zone in which the taximeter was engaged'),
+                      DOLocationID STRING OPTIONS (description = 'TLC Taxi Zone in which the taximeter was disengaged'),
+                      passenger_count INT64 OPTIONS (description = 'The number of passengers in the vehicle. This is a driver-entered value.'),
+                      trip_distance NUMERIC OPTIONS (description = 'The elapsed trip distance in miles reported by the taximeter.'),
+                      fare_amount NUMERIC OPTIONS (description = 'The time-and-distance fare calculated by the meter'),
+                      extra NUMERIC OPTIONS (description = 'Miscellaneous extras and surcharges. Currently, this only includes the $0.50 and $1 rush hour and overnight charges'),
+                      mta_tax NUMERIC OPTIONS (description = '$0.50 MTA tax that is automatically triggered based on the metered rate in use'),
+                      tip_amount NUMERIC OPTIONS (description = 'Tip amount. This field is automatically populated for credit card tips. Cash tips are not included.'),
+                      tolls_amount NUMERIC OPTIONS (description = 'Total amount of all tolls paid in trip.'),
+                      ehail_fee NUMERIC,
+                      improvement_surcharge NUMERIC OPTIONS (description = '$0.30 improvement surcharge assessed on hailed trips at the flag drop. The improvement surcharge began being levied in 2015.'),
+                      total_amount NUMERIC OPTIONS (description = 'The total amount charged to passengers. Does not include cash tips.'),
+                      payment_type INTEGER OPTIONS (description = 'A numeric code signifying how the passenger paid for the trip. 1= Credit card 2= Cash 3= No charge 4= Dispute 5= Unknown 6= Voided trip'),
+                      trip_type STRING OPTIONS (description = 'A code indicating whether the trip was a street-hail or a dispatch that is automatically assigned based on the metered rate in use but can be altered by the driver. 1= Street-hail 2= Dispatch'),
+                      congestion_surcharge NUMERIC OPTIONS (description = 'Congestion surcharge applied to trips in congested zones')
+                  )
+                  OPTIONS (
+                      format = 'CSV',
+                      uris = ['{{render(vars.gcs_file)}}'],
+                      skip_leading_rows = 1,
+                      ignore_unknown_values = TRUE
+                  );
+              - id: bq_green_table_tmp
+                type: io.kestra.plugin.gcp.bigquery.Query
+                sql: |
+                  CREATE OR REPLACE TABLE `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}`
+                  AS
+                  SELECT
+                    MD5(CONCAT(
+                      COALESCE(CAST(VendorID AS STRING), ""),
+                      COALESCE(CAST(lpep_pickup_datetime AS STRING), ""),
+                      COALESCE(CAST(lpep_dropoff_datetime AS STRING), ""),
+                      COALESCE(CAST(PULocationID AS STRING), ""),
+                      COALESCE(CAST(DOLocationID AS STRING), "")
+                    )) AS unique_row_id,
+                    "{{render(vars.file)}}" AS filename,
+                    *
+                  FROM `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}_ext`;
+              - id: bq_green_merge
+                type: io.kestra.plugin.gcp.bigquery.Query
+                sql: |
+                  MERGE INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.green_tripdata` T
+                  USING `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}` S
+                  ON T.unique_row_id = S.unique_row_id
+                  WHEN NOT MATCHED THEN
+                    INSERT (unique_row_id, filename, VendorID, lpep_pickup_datetime, lpep_dropoff_datetime, store_and_fwd_flag, RatecodeID, PULocationID, DOLocationID, passenger_count, trip_distance, fare_amount, extra, mta_tax, tip_amount, tolls_amount, ehail_fee, improvement_surcharge, total_amount, payment_type, trip_type, congestion_surcharge)
+                    VALUES (S.unique_row_id, S.filename, S.VendorID, S.lpep_pickup_datetime, S.lpep_dropoff_datetime, S.store_and_fwd_flag, S.RatecodeID, S.PULocationID, S.DOLocationID, S.passenger_count, S.trip_distance, S.fare_amount, S.extra, S.mta_tax, S.tip_amount, S.tolls_amount, S.ehail_fee, S.improvement_surcharge, S.total_amount, S.payment_type, S.trip_type, S.congestion_surcharge);
+        
+          - id: purge_files
+            type: io.kestra.plugin.core.storage.PurgeCurrentExecutionFiles
+            description: If you'd like to explore Kestra outputs, disable it.
+            disabled: false
+        
+        pluginDefaults:
+          - type: io.kestra.plugin.gcp
+            values:
+              serviceAccount: "{{kv('GCP_CREDS')}}"
+              projectId: "{{kv('GCP_PROJECT_ID')}}"
+              location: "{{kv('GCP_LOCATION')}}"
+              bucket: "{{kv('GCP_BUCKET_NAME')}}"
+        ```
